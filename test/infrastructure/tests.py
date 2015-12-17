@@ -5,8 +5,8 @@ Created on 8 Dec 2013
 '''
 
 import sys, os, difflib, shutil, imp, tempfile
-from timed_process import CompileProcess, RuntimeProcess
-from valgrindxml import ValgrindXML
+from .timed_process import CompileProcess, RuntimeProcess
+from .valgrindxml import ValgrindXML
 
 class Test(object):
     """Superclass for all the tests."""
@@ -229,7 +229,7 @@ class InvokeTest(Test):
     def compilationSuccess(self, p):
         if not p.success():
             print("\n[FAIL] "+os.path.join(self.basedir, self.srcfile))
-            print("Output: "+p.output)
+            print("Output: "+str(p.output))
             return False
         return True
 

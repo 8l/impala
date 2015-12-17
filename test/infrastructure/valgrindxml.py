@@ -42,5 +42,5 @@ class ValgrindXML(object):
     
 if __name__ == "__main__":
     # TESTING
-    import tests
-    print ValgrindXML(tests.ValgrindTest.VALGRIND_XML_FILE)
+    from . import tests
+    print(ValgrindXML(tests.ValgrindTest.VALGRIND_XML_FILE))

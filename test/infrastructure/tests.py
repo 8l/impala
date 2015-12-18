@@ -4,7 +4,7 @@ Created on 8 Dec 2013
 @author: Alexander Kampmann, David Poetzsch-Heffter
 '''
 
-import sys, os, difflib, shutil, imp, tempfile
+import sys, os, difflib, shutil, imp, tempfile, hashlib
 from .timed_process import CompileProcess, RuntimeProcess
 from .valgrindxml import ValgrindXML
 
@@ -217,9 +217,26 @@ class InvokeTest(Test):
                 with open(os.path.join(self.basedir, self.output_file), 'r') as f:
                     return diff_output(proc.output, f.read())
             else:
-                with open(self.compare_file, 'r') as f:
-                    with open(os.path.join(self.basedir, self.output_file), 'r') as g:
-                        return diff_output(f.read(), g.read())
+                #return diff_output(hashlib.md5(self.compare_file).hexdigest(), hashlib.md5(os.path.join(self.basedir, self.output_file)).hexdigest())
+                hash1 = hashlib.md5()
+                hash2 = hashlib.md5()
+                with open(self.compare_file, 'rb') as f:
+                    while True:
+                        data = f.read(4096)
+                        if not data:
+                            break
+                        hash1.update(data)
+
+                with open(os.path.join(self.basedir, self.output_file), 'rb') as g:
+                    while True:
+                        data = g.read(4096)
+                        if not data:
+                            break
+                        hash2.update(data)
+                return diff_output(hash1.hexdigest(), hash2.hexdigest())
+
+                    #with open(os.path.join(self.basedir, self.output_file), 'rb') as g:
+                    #    return diff_output(hashlib.md5(f.read()).hexdigest(), hashlib.md5(g.read()).hexdigest())
         return True
             
     def cleanup(self, file):

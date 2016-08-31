@@ -15,7 +15,7 @@ const Param* Param::create(size_t var_handle, const Identifier* identifier, cons
     return param;
 }
 
-const ImplicitCastExpr* ImplicitCastExpr::create(const Expr* expr, const Type* type) {
+const ImplicitCastExpr* ImplicitCastExpr::create(const Expr* expr, const Def* type) {
     auto implicit_cast_expr = new ImplicitCastExpr();
     implicit_cast_expr->type_ = type;
     implicit_cast_expr->set_loc(expr->loc());
@@ -23,10 +23,10 @@ const ImplicitCastExpr* ImplicitCastExpr::create(const Expr* expr, const Type* t
     return implicit_cast_expr;
 }
 
-const PrefixExpr* PrefixExpr::create(const Expr* expr, const Kind kind) {
+const PrefixExpr* PrefixExpr::create(const Expr* expr, const Tag tag) {
     auto deref = new PrefixExpr();
     deref->set_loc(expr->loc());
-    deref->kind_ = kind;
+    deref->tag_ = tag;
     insert(deref, deref->rhs_, expr);
     return deref;
 }
@@ -45,7 +45,7 @@ const char* Visibility::str() {
 }
 
 std::string PtrASTType::prefix() const {
-    switch (kind()) {
+    switch (tag()) {
         case Borrowed: return "&";
         case Mut:      return "&mut";
         case Owned:    return "~";
@@ -61,8 +61,8 @@ const FnASTType* FnASTType::ret_fn_ast_type() const {
     return nullptr;
 }
 
-PrimTypeKind LiteralExpr::literal2type() const {
-    switch (kind()) {
+PrimTypeTag LiteralExpr::literal2type() const {
+    switch (tag()) {
 #define IMPALA_LIT(itype, atype) \
         case LIT_##itype: return PrimType_##itype;
 #include "impala/tokenlist.h"
@@ -96,10 +96,10 @@ bool PathExpr::is_lvalue() const {
 bool MapExpr::is_lvalue() const {
     if (!lhs()->type())
         return true; // prevent further errors
-    return (lhs()->type()->isa<ArrayType>() || lhs()->type()->isa<TupleType>() || lhs()->type()->isa<PtrType>()) && lhs()->is_lvalue();
+    return (lhs()->type()->isa<ArrayType>() || lhs()->type()->isa<Sigma>() || lhs()->type()->isa<PtrType>()) && lhs()->is_lvalue();
 }
 
-bool PrefixExpr::is_lvalue() const { return (kind() == MUL || kind() == AND) && rhs()->is_lvalue(); }
+bool PrefixExpr::is_lvalue() const { return (tag() == MUL || tag() == AND) && rhs()->is_lvalue(); }
 bool FieldExpr::is_lvalue() const { return lhs()->is_lvalue(); }
 bool CastExpr::is_lvalue() const { return lhs()->is_lvalue(); }
 
@@ -110,11 +110,11 @@ bool CastExpr::is_lvalue() const { return lhs()->is_lvalue(); }
  */
 
 bool PrefixExpr::has_side_effect() const {
-    return kind() == INC || kind() == DEC || kind() == TILDE || kind() == RUN || kind() == HLT;
+    return tag() == INC || tag() == DEC || tag() == TILDE || tag() == RUN || tag() == HLT;
 }
 
 bool InfixExpr::has_side_effect() const {
-    return Token::is_assign((TokenKind) kind());
+    return Token::is_assign((TokenTag) tag());
 }
 
 bool PostfixExpr::has_side_effect() const { return true; }

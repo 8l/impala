@@ -15,12 +15,12 @@ class CGen {
 private:
     // Analyses a type to see if it mentions a structure somewhere
     template <typename F>
-    void struct_from_type(const Type* type, const F& f) {
+    void struct_from_type(const Def* type, const F& f) {
         if (type->isa<SimdType>())
             needs_vectors = true; // if the type mentions a vector, then we need to include the intrinsics header
 
-        if (auto struct_type = type->isa<StructType>())
-            f(struct_type->struct_decl());
+        if (auto sigma = type->isa<Sigma>())
+            f(sigma2struct_decl(sigma));
         else if (auto ptr_type = type->isa<PtrType>())
             struct_from_type(ptr_type->referenced_type(), f);
         else if (auto array_type = type->isa<ArrayType>())
@@ -28,9 +28,9 @@ private:
     }
 
     // Generates a C type from an Impala type
-    static bool ctype_from_impala(const Type* type, std::string& ctype_prefix, std::string& ctype_suffix) {
+    static bool ctype_from_impala(const Def* type, std::string& ctype_prefix, std::string& ctype_suffix) {
         if (auto prim_type = type->isa<PrimType>()) {
-            switch (prim_type->primtype_kind()) {
+            switch (prim_type->primtype_tag()) {
                 case PrimType_i8:
                     ctype_prefix = "char"; ctype_suffix = "";
                     return true;
@@ -74,7 +74,7 @@ private:
             auto prim = simd_type->elem_type()->as<PrimType>();
 
             ctype_suffix = "";
-            switch (prim->primtype_kind()) {
+            switch (prim->primtype_tag()) {
                 case PrimType_i32:
                     if (simd_type->dim() == 4) ctype_prefix = "__m128i";
                     else if (simd_type->dim() == 8) ctype_prefix = "__m256i";
@@ -98,18 +98,15 @@ private:
             return true;
         }
 
-        // Structure types
-        if (auto struct_type = type->isa<StructType>()) {
-            const StructDecl* decl = struct_type->struct_decl();
-            ctype_prefix = "struct " + std::string(decl->item_symbol().str());
-            ctype_suffix = "";
-            return true;
-        }
-
-        // C void type is represented as an empty tuple (other tuples are not supported for interface generation)
-        if (type->isa<TupleType>()) {
-            ctype_prefix = "void";
-            ctype_suffix = "";
+        if (auto sigma = type->isa<Sigma>()) {
+            if (sigma->is_nominal()) {
+                auto struct_decl = sigma2struct_decl(sigma);
+                ctype_prefix = "struct " + std::string(struct_decl->item_symbol().str());
+                ctype_suffix = "";
+            } else { // C void type is represented as an empty tuple (other tuples are not yet supported for interface generation)
+                ctype_prefix = "void";
+                ctype_suffix = "";
+            }
             return true;
         }
 

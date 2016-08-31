@@ -14,7 +14,7 @@ namespace impala {
 
 class Token : public thorin::HasLocation {
 public:
-    enum Kind {
+    enum Tag {
         // !!! DO NOT CHANGE THIS ORDER !!!
         // add prefix and postfix tokens manually in order to avoid duplicates in the enum
 #define IMPALA_INFIX(     tok, t_str, r, l) tok,
@@ -34,22 +34,22 @@ public:
         NUM_TOKENS
     };
 
-    struct KindHash {
-        uint64_t operator()(Kind kind) const { return thorin::hash_value((int) kind); }
+    struct TagHash {
+        uint64_t operator()(Tag tag) const { return thorin::hash_value((int) tag); }
     };
 
     Token() {}
     /// Create an operator token
-    Token(const thorin::Location& loc, Kind tok);
+    Token(const thorin::Location& loc, Tag tok);
     /// Create an identifier or a keyword (depends on \p str)
     Token(const thorin::Location& loc, const std::string& str);
     /// Create a literal
-    Token(const thorin::Location& loc, Kind type, const std::string& str);
+    Token(const thorin::Location& loc, Tag type, const std::string& str);
 
     Symbol symbol() const { return symbol_; }
     thorin::Box box() const { return box_; }
-    Kind kind() const { return kind_; }
-    operator Kind() const { return kind_; }
+    Tag tag() const { return tag_; }
+    operator Tag() const { return tag_; }
 
     enum Op {
         NONE    = 0,
@@ -59,57 +59,57 @@ public:
         ASGN_OP = 8
     };
 
-    bool is_stmt_like() const { return kind() == L_BRACE || kind() == IF || kind() == FOR || kind() == WHILE || kind() == WITH; }
-    bool is_prefix()    const { return is_prefix(kind_); }
-    bool is_infix()     const { return is_infix(kind_); }
-    bool is_postfix()   const { return is_postfix(kind_); }
-    bool is_assign()    const { return is_assign(kind_); }
-    bool is_op()        const { return is_op(kind_); }
+    bool is_stmt_like() const { return tag() == L_BRACE || tag() == IF || tag() == FOR || tag() == WHILE || tag() == WITH; }
+    bool is_prefix()    const { return is_prefix(tag_); }
+    bool is_infix()     const { return is_infix(tag_); }
+    bool is_postfix()   const { return is_postfix(tag_); }
+    bool is_assign()    const { return is_assign(tag_); }
+    bool is_op()        const { return is_op(tag_); }
 
-    static Kind sym2lit(Symbol sym);
-    static Kind sym2flit(Symbol sym);
-    static bool is_prefix(Kind kind)  { return (tok2op_[kind] &  PREFIX) != 0; }
-    static bool is_infix(Kind kind)   { return (tok2op_[kind] &   INFIX) != 0; }
-    static bool is_postfix(Kind kind) { return (tok2op_[kind] & POSTFIX) != 0; }
-    static bool is_assign(Kind kind)  { return (tok2op_[kind] & ASGN_OP) != 0; }
-    static bool is_op(Kind kind)      { return is_prefix(kind) || is_infix(kind) || is_postfix(kind); }
-    static bool is_rel(Kind kind);
-    static Kind separate_assign(Kind kind);
-    static int to_binop(Kind kind);
-    static thorin::ArithOpKind to_arithop(Kind kind) { return (thorin::ArithOpKind) to_binop(kind); }
-    static thorin::CmpKind     to_cmp    (Kind kind) { return (thorin::CmpKind)     to_binop(kind); }
-    static const char* tok2str(Kind kind);
+    static Tag sym2lit(Symbol sym);
+    static Tag sym2flit(Symbol sym);
+    static bool is_prefix(Tag tag)  { return (tok2op_[tag] &  PREFIX) != 0; }
+    static bool is_infix(Tag tag)   { return (tok2op_[tag] &   INFIX) != 0; }
+    static bool is_postfix(Tag tag) { return (tok2op_[tag] & POSTFIX) != 0; }
+    static bool is_assign(Tag tag)  { return (tok2op_[tag] & ASGN_OP) != 0; }
+    static bool is_op(Tag tag)      { return is_prefix(tag) || is_infix(tag) || is_postfix(tag); }
+    static bool is_rel(Tag tag);
+    static Tag separate_assign(Tag tag);
+    static int to_binop(Tag tag);
+    static thorin::ArithOpTag to_arithop(Tag tag) { return (thorin::ArithOpTag) to_binop(tag); }
+    static thorin::CmpTag     to_cmp    (Tag tag) { return (thorin::CmpTag)     to_binop(tag); }
+    static const char* tok2str(Tag tag);
 
-    bool operator==(const Token& t) const { return kind_ == t; }
-    bool operator!=(const Token& t) const { return kind_ != t; }
+    bool operator==(const Token& t) const { return tag_ == t; }
+    bool operator!=(const Token& t) const { return tag_ != t; }
 
 private:
     static void init();
-    static Symbol insert(Kind tok, const char* str);
-    static void insert_key(Kind tok, const char* str);
+    static Symbol insert(Tag tok, const char* str);
+    static void insert_key(Tag tok, const char* str);
 
     Symbol symbol_;
-    Kind kind_;
+    Tag tag_;
     thorin::Box box_;
 
     static int tok2op_[NUM_TOKENS];
-    static thorin::HashMap<Kind, const char*, KindHash> tok2str_;
-    static thorin::HashMap<Kind, Symbol, KindHash> tok2sym_;
-    static thorin::HashMap<Symbol, Kind> keywords_;
-    static thorin::HashMap<Symbol, Kind> sym2lit_; ///< Table of \em all (including floating) suffixes for literals.
-    static thorin::HashMap<Symbol, Kind> sym2flit_;///< Table of suffixes for \em floating point literals.
+    static thorin::HashMap<Tag, const char*, TagHash> tok2str_;
+    static thorin::HashMap<Tag, Symbol, TagHash> tok2sym_;
+    static thorin::HashMap<Symbol, Tag> keywords_;
+    static thorin::HashMap<Symbol, Tag> sym2lit_; ///< Table of \em all (including floating) suffixes for literals.
+    static thorin::HashMap<Symbol, Tag> sym2flit_;///< Table of suffixes for \em floating point literals.
 
     friend void init();
     friend std::ostream& operator<<(std::ostream& os, const Token& tok);
-    friend std::ostream& operator<<(std::ostream& os, const Kind&  tok);
+    friend std::ostream& operator<<(std::ostream& os, const Tag&  tok);
 };
 
-typedef Token::Kind TokenKind;
+typedef Token::Tag TokenTag;
 
 //------------------------------------------------------------------------------
 
 std::ostream& operator<<(std::ostream& os, const Token& tok);
-std::ostream& operator<<(std::ostream& os, const TokenKind& tok);
+std::ostream& operator<<(std::ostream& os, const TokenTag& tok);
 
 //------------------------------------------------------------------------------
 

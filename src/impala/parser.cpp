@@ -145,19 +145,19 @@ public:
     Location prev_loc() const { return prev_loc_; }
 
 #ifdef NDEBUG
-    Token eat(TokenKind kind) { return lex(); }
+    Token eat(TokenTag tag) { return lex(); }
 #else
-    Token eat(TokenKind kind) { assert(kind == la() && "internal parser error"); return lex(); }
+    Token eat(TokenTag tag) { assert(tag == la() && "internal parser error"); return lex(); }
 #endif
 
-    bool accept(TokenKind tok);
-    bool expect(TokenKind tok, const std::string& context);
+    bool accept(TokenTag tok);
+    bool expect(TokenTag tok, const std::string& context);
     void error(const std::string& what, const std::string& context) { error(what, context, la()); }
     void error(const std::string& what, const std::string& context, const Token& tok);
     template<class T>
     Loc<T> loc(T* node) { return Loc<T>(*this, node); }
 
-    void parse_comma_list(TokenKind delimiter, const char* context, std::function<void()> f) {
+    void parse_comma_list(TokenTag delimiter, const char* context, std::function<void()> f) {
         if (la() != delimiter) {
             do { f(); }
             while (accept(Token::COMMA) && la() != delimiter);
@@ -180,7 +180,7 @@ public:
     void parse_ast_type_params(AutoVector<const ASTTypeParam*>&);
     const ASTTypeParam* parse_ast_type_param();
     const Param* parse_param(int i, bool lambda);
-    void parse_param_list(AutoVector<const Param*>& params, TokenKind delimiter, bool lambda);
+    void parse_param_list(AutoVector<const Param*>& params, TokenTag delimiter, bool lambda);
     void parse_return_param(Fn* fn);
 
     // types
@@ -302,14 +302,14 @@ Token Parser::lex() {
     return result;
 }
 
-bool Parser::accept(TokenKind type) {
+bool Parser::accept(TokenTag type) {
     if (type != la())
         return false;
     lex();
     return true;
 }
 
-bool Parser::expect(TokenKind tok, const std::string& context) {
+bool Parser::expect(TokenTag tok, const std::string& context) {
     if (la() == tok) {
         lex();
         return true;
@@ -341,7 +341,7 @@ const Identifier* Parser::try_id(const std::string& what) {
 Visibility Parser::parse_visibility() {
     Visibility visibility;
     switch (la()) {
-        case VISIBILITY: return Visibility(lex().kind());
+        case VISIBILITY: return Visibility(lex().tag());
         default:         return Visibility(Visibility::None);
     }
 }
@@ -416,7 +416,7 @@ const ASTTypeParam* Parser::parse_ast_type_param() {
     return ast_type_param;
 }
 
-void Parser::parse_param_list(AutoVector<const Param*>& params, TokenKind delimiter, bool lambda) {
+void Parser::parse_param_list(AutoVector<const Param*>& params, TokenTag delimiter, bool lambda) {
     int i = 0;
     parse_comma_list(delimiter, "parameter list", [&] { params.emplace_back(parse_param(i++, lambda)); });
 }
@@ -786,7 +786,7 @@ const ASTType* Parser::parse_return_type(bool& is_continuation, bool mandatory) 
 
 const PrimASTType* Parser::parse_prim_type() {
     auto prim_type = loc(new PrimASTType());
-    prim_type->kind_ = (PrimASTType::Kind) lex().kind();
+    prim_type->tag_ = (PrimASTType::Tag) lex().tag();
     return prim_type;
 }
 
@@ -795,11 +795,11 @@ const PtrASTType* Parser::parse_ptr_type() {
         auto begin = la().loc().begin();
         auto inner = new PtrASTType();
         lex();
-        inner->kind_ = accept(Token::MUT) ? PtrASTType::Mut : PtrASTType::Borrowed;
+        inner->tag_ = accept(Token::MUT) ? PtrASTType::Mut : PtrASTType::Borrowed;
         inner->addr_space_ = parse_addr_space();
         inner->referenced_ast_type_ = parse_type();
         auto outer = new PtrASTType();
-        outer->kind_ = PtrASTType::Borrowed;
+        outer->tag_ = PtrASTType::Borrowed;
         outer->referenced_ast_type_ = inner;
         inner->set_loc(begin, prev_loc().end());
         outer->loc_ = inner->loc();
@@ -808,13 +808,13 @@ const PtrASTType* Parser::parse_ptr_type() {
     auto ptr_type = loc(new PtrASTType());
 
     if (accept(Token::TILDE))
-        ptr_type->kind_ = PtrASTType::Owned;
+        ptr_type->tag_ = PtrASTType::Owned;
     else {
         eat(Token::AND);
         if (accept(Token::MUT))
-            ptr_type->kind_ = PtrASTType::Mut;
+            ptr_type->tag_ = PtrASTType::Mut;
         else
-            ptr_type->kind_ = PtrASTType::Borrowed;
+            ptr_type->tag_ = PtrASTType::Borrowed;
     }
 
     ptr_type->addr_space_ = parse_addr_space();
@@ -912,19 +912,19 @@ const Expr* Parser::parse_prefix_expr() {
         return parse_fn_expr();
 
     auto expr = loc(new PrefixExpr());
-    auto kind = lex().kind();
-    expr->kind_ = (PrefixExpr::Kind) kind;
-    dock(expr->rhs_, parse_expr(PrecTable::prefix_r[kind]));
+    auto tag = lex().tag();
+    expr->tag_ = (PrefixExpr::Tag) tag;
+    dock(expr->rhs_, parse_expr(PrecTable::prefix_r[tag]));
 
     return expr;
 }
 
 const Expr* Parser::parse_infix_expr(const Expr* lhs) {
     auto expr = new InfixExpr();
-    auto kind = lex().kind();
-    expr->kind_ = (InfixExpr::Kind) kind;
+    auto tag = lex().tag();
+    expr->tag_ = (InfixExpr::Tag) tag;
     dock(expr->lhs_, lhs);
-    dock(expr->rhs_, parse_expr(PrecTable::infix_r[kind]));
+    dock(expr->rhs_, parse_expr(PrecTable::infix_r[tag]));
     expr->set_loc(lhs->loc().begin(), expr->rhs()->loc().end());
     return expr;
 }
@@ -955,7 +955,7 @@ const Expr* Parser::parse_postfix_expr(const Expr* lhs) {
         case Token::INC: {
             auto expr = new PostfixExpr();
             dock(expr->lhs_, lhs);
-            expr->kind_ = (PostfixExpr::Kind) lex().kind();
+            expr->tag_ = (PostfixExpr::Tag) lex().tag();
             expr->set_loc(lhs->loc().begin(), prev_loc().end());
             return expr;
         }
@@ -1107,7 +1107,7 @@ const Expr* Parser::parse_primary_expr() {
 }
 
 const LiteralExpr* Parser::parse_literal_expr() {
-    LiteralExpr::Kind kind;
+   LiteralExpr::Tag tag;
     Box box;
 
     switch (la()) {
@@ -1115,9 +1115,9 @@ const LiteralExpr* Parser::parse_literal_expr() {
         case Token::FALSE:      return new LiteralExpr(lex().loc(), LiteralExpr::LIT_bool, Box(false));
 #define IMPALA_LIT(itype, atype) \
         case Token::LIT_##itype: { \
-            kind = LiteralExpr::LIT_##itype; \
+            tag = LiteralExpr::LIT_##itype; \
             Box box = la().box(); \
-            return new LiteralExpr(lex().loc(), kind, box); \
+            return new LiteralExpr(lex().loc(), tag, box); \
         }
 #include "impala/tokenlist.h"
         default: THORIN_UNREACHABLE;

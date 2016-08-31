@@ -7,7 +7,7 @@
 
 namespace impala {
 
-class TypeTable : public TypeTableBase<TypeTable> {
+class TypeTable : public TableBase<TypeTable> {
 public:
     TypeTable();
 
@@ -19,7 +19,7 @@ public:
     const DefiniteArrayType* definite_array_type(const Type* elem_type, uint64_t dim) {
         return unify(new DefiniteArrayType(*this, elem_type, dim));
     }
-    const FnType* fn_type(Types params) { return unify(new FnType(*this, params)); }
+    const FnType* fn_type(Defs defs) { return unify(new FnType(*this, defs)); }
     const IndefiniteArrayType* indefinite_array_type(const Type* elem_type) {
         return unify(new IndefiniteArrayType(*this, elem_type));
     }
@@ -31,14 +31,23 @@ public:
     const OwnedPtrType* owned_ptr_type(const Type* referenced_type, int addr_space = 0) {
         return unify(new OwnedPtrType(*this, referenced_type, addr_space));
     }
-    const PrimType* prim_type(PrimTypeKind kind);
+    const PrimType* prim_type(PrimTypeTag tag);
     const UnknownType* unknown_type() { return unify(new UnknownType(*this)); }
+
+    const StructDecl* sigma2struct_decl(const Sigma* sigma) {
+        auto i = sigma2struct_decl_.find(sigma);
+        assert(i != sigma2struct_decl_.end());
+        return i->second;
+    }
 
 private:
     const NoRetType* type_noret_;
+    DefMap<const StructDecl*> sigma2struct_decl_;
 #define IMPALA_TYPE(itype, atype) const PrimType* itype##_;
 #include "impala/tokenlist.h"
 };
+
+inline const StructDecl* sigma2struct_decl(const Sigma* sigma) { return sigma->table().sigma2struct_decl(sigma); }
 
 }
 

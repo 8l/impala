@@ -76,13 +76,11 @@ public:
         return check_call(lhs, array);
     }
 
-    const FnType* fn_type(const Def* type) {
-        if (auto tuple_type = type->isa<TupleType>())
-            return TypeTable::fn_type(tuple_type->ops());
-        return TypeTable::fn_type({type});
-    }
-
-    const FnType* fn_type(ArrayRef<const Def*> types) { return fn_type(tuple_type(types)); }
+    const Def* app(const Def* callee, const Def* arg) { return TypeTable::app(callee, arg, thorin::Location(), ""); }
+    const Def* app(const Def* callee, Defs args) { return TypeTable::app(callee, args, thorin::Location(), ""); }
+    const Lambda* lambda(const Def* body, const std::string& name = "") { return TypeTable::lambda(star(), body, thorin::Location(), name); }
+    const Pi*     pi    (const Def* body, const std::string& name = "") { return TypeTable::pi    (star(), body, thorin::Location(), name); }
+    const Def* type_error() { return TypeTable::error(star()); }
 
 private:
     /// Used for union/find - see https://en.wikipedia.org/wiki/Disjoint-set_data_structure#Disjoint-set_forests .
@@ -215,32 +213,11 @@ const Def* InferSema::coerce(const Def* dst, const Expr* src) {
 }
 
 const Def* InferSema::unify(const Def* dst, const Def* src) {
-    assert(dst->is_hashed() && src->is_hashed());
-
     auto dst_repr = find(representative(dst));
     auto src_repr = find(representative(src));
 
     dst = dst_repr->type;
     src = src_repr->type;
-
-    // normalise singleton tuples to their element
-    if (src->isa<TupleType>() && src->num_ops() == 1) src = src->op(0);
-    if (dst->isa<TupleType>() && dst->num_ops() == 1) dst = dst->op(0);
-
-    // HACK needed as long as we have this stupid tuple problem
-    if (auto dst_fn = dst->isa<FnType>()) {
-        if (auto src_fn = src->isa<FnType>()) {
-            if (dst_fn->num_ops() != 1 && src_fn->num_ops() == 1 && src_fn->op(0)->isa<UnknownType>()) {
-                if (dst_fn->is_known())
-                    return unify(dst_repr, src_repr)->type;
-            }
-
-            if (src_fn->num_ops() != 1 && dst_fn->num_ops() == 1 && dst_fn->op(0)->isa<UnknownType>()) {
-                if (src_fn->is_known())
-                    return unify(src_repr, dst_repr)->type;
-            }
-        }
-    }
 
     if (dst == src)            return dst;
     if (dst->isa<TypeError>()) return src; // guess the other one

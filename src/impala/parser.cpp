@@ -57,6 +57,8 @@
     case Token::ID: \
     case Token::RUN: \
     case Token::HLT: \
+    case Token::PE_STATE: \
+    case Token::CHECK: \
     case Token::IF: \
     case Token::MATCH: \
     case Token::FOR: \
@@ -1001,6 +1003,9 @@ const Expr* Parser::parse_primary_expr() {
         case Token::WHILE:      return parse_while_expr();
         case Token::L_BRACE:
         case Token::RUN_BLOCK:  return parse_block_expr();
+        case Token::PE_STATE:
+            eat(Token::PE_STATE);
+            return new PEStateExpr(tracker);
         default:                error("expression", ""); return new EmptyExpr(lex().location());
     }
 }

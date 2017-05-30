@@ -350,6 +350,10 @@ std::ostream& PostfixExpr::stream(std::ostream& os) const {
     return close(os, open_state);
 }
 
+std::ostream& PEStateExpr::stream(std::ostream& os) const {
+    return os << "@?";
+}
+
 std::ostream& FieldExpr::stream(std::ostream& os) const {
     auto open_state = open(os, Prec::Unary);
     os << lhs() << '.' << symbol();

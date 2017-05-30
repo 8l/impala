@@ -651,6 +651,10 @@ const Type* PrefixExpr::infer(InferSema& sema) const {
             return sema.rvalue(rhs());
         case OR:  case OROR: // Lambda
             THORIN_UNREACHABLE;
+        case CHECK:
+            sema.rvalue(rhs());
+            sema.constrain(rhs(), sema.type_bool());
+            return sema.type_bool();
     }
     THORIN_UNREACHABLE;
 }
@@ -704,6 +708,10 @@ const Type* InfixExpr::infer(InferSema& sema) const {
 
 const Type* PostfixExpr::infer(InferSema& sema) const {
     return unpack_ref_type(sema.infer(lhs()));
+}
+
+const Type* PEStateExpr::infer(InferSema& sema) const {
+    return sema.type_bool();
 }
 
 const Type* ExplicitCastExpr::infer(InferSema& sema) const {

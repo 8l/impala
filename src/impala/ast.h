@@ -1351,6 +1351,22 @@ private:
     std::unique_ptr<const Expr> lhs_;
 };
 
+/// @code @?
+class PEStateExpr : public Expr {
+public:
+    PEStateExpr(Location location)
+        : Expr(location)
+    {}
+
+    void bind(NameSema&) const override;
+    const thorin::Def* remit(CodeGen&) const override;
+    std::ostream& stream(std::ostream&) const override;
+
+private:
+    const Type* infer(InferSema&) const override;
+    void check(TypeSema&) const override;
+};
+
 class FieldExpr : public Expr {
 public:
     FieldExpr(Location location, const Expr* lhs, const Identifier* id)

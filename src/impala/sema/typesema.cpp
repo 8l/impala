@@ -348,6 +348,9 @@ void PrefixExpr::check(TypeSema& sema) const {
             return;
         case OR: case OROR:
             THORIN_UNREACHABLE;
+        case CHECK:
+            sema.expect_bool(rhs(), "right-hand side of partial evaluation check");
+            return;
     }
 
     THORIN_UNREACHABLE;
@@ -441,6 +444,8 @@ void PostfixExpr::check(TypeSema& sema) const {
     sema.expect_num(lhs(),    "postfix '{}'", tok2str(this));
     sema.expect_lvalue(lhs(), "postfix '{}'", tok2str(this));
 }
+
+void PEStateExpr::check(TypeSema&) const {}
 
 template <typename F, typename T>
 bool symmetric(F f, T a, T b) { return f(a, b) || f(b, a); }

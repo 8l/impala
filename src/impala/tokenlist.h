@@ -14,6 +14,7 @@ IMPALA_PREFIX(   OR,   "|") // lambda expressions
 IMPALA_PREFIX( OROR,  "||") // lambda expressions with empty param list
 IMPALA_PREFIX(  RUN,   "@") // trigger partial evaluation
 IMPALA_PREFIX(  HLT,   "$") // stop partial evaluation
+IMPALA_PREFIX(CHECK,   "?") // check during PE if expression is statically known
 
 #undef IMPALA_PREFIX
 
@@ -115,6 +116,7 @@ IMPALA_MISC(L_BRACE,      "{")
 IMPALA_MISC(R_BRACE,      "}")
 IMPALA_MISC(L_BRACKET,    "[")
 IMPALA_MISC(R_BRACKET,    "]")
+IMPALA_MISC(PE_STATE,     "?@")
 IMPALA_MISC(RUN_BLOCK,    "@{")
 IMPALA_MISC(ARROW,        "->")
 IMPALA_MISC(FAT_ARRROW,   "=>")

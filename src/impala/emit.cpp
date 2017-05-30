@@ -494,6 +494,15 @@ const Def* PostfixExpr::remit(CodeGen& cg) const {
     return def;
 }
 
+const Def* PEStateExpr::remit(CodeGen& cg) const {
+    auto m = cg.world().mem_type();
+    auto f = cg.world().fn_type({m, cg.world().fn_type({m, cg.world().type_bool()})});
+    auto cont = cg.world().continuation(f, {location(), "pe_state"});
+    cont->set_intrinsic();
+    // TODO
+    return nullptr;
+}
+
 const Def* DefiniteArrayExpr::remit(CodeGen& cg) const {
     Array<const Def*> thorin_args(num_args());
     for (size_t i = 0, e = num_args(); i != e; ++i)

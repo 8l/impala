@@ -157,7 +157,7 @@ Token Lexer::lex() {
             return {location(), Token::RUN};
         }
 
-        // ?
+        // ?, ?@
         if (accept('?')) {
             if (accept('@'))
                 return {location(), Token::PE_STATE};

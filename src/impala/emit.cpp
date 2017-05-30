@@ -499,8 +499,11 @@ const Def* PEStateExpr::remit(CodeGen& cg) const {
     auto f = cg.world().fn_type({m, cg.world().fn_type({m, cg.world().type_bool()})});
     auto cont = cg.world().continuation(f, {location(), "pe_state"});
     cont->set_intrinsic();
-    // TODO
-    return nullptr;
+    auto ret_type = cg.world().type_bool();
+    auto mem = cg.get_mem(); // now get the current memory monad
+    auto ret = cg.call(cont, {mem}, ret_type, thorin::Debug(location(), cont->name()) + "_cont");
+    cg.set_mem(cg.cur_bb->param(0));
+    return ret;
 }
 
 const Def* DefiniteArrayExpr::remit(CodeGen& cg) const {

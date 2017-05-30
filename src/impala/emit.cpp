@@ -642,10 +642,10 @@ const Def* MapExpr::remit(CodeGen& cg, State state, Location eval_loc) const {
         if (ret_type)
             cg.set_mem(cg.cur_bb->param(0));
 
-        if (state != None) {
-            auto eval = state == Run ? &thorin::World::run : &thorin::World::hlt;
-            auto cont = old_bb->args().back();
-            old_bb->update_callee((cg.world().*eval)(old_bb->callee(), cont, eval_loc));
+        switch (state) {
+            case Run: old_bb->update_callee(cg.world().run(old_bb->callee(), old_bb->args().back(), eval_loc)); break;
+            case Hlt: old_bb->update_callee(cg.world().hlt(old_bb->callee(), old_bb->args().back(), eval_loc)); break;
+            default:; // FALLTHROUGH
         }
 
         return ret;

@@ -1367,6 +1367,29 @@ private:
     void check(TypeSema&) const override;
 };
 
+class EvalExpr : public Expr {
+public:
+    enum Tag {
+        RUN = Token::RUN,
+        HLT = Token::HLT,
+    };
+
+    EvalExpr(Location location, const Expr* cond)
+        : Expr(location)
+        , cond_(dock(cond_, cond))
+    {}
+
+    void bind(NameSema&) const override;
+    const thorin::Def* remit(CodeGen&) const override;
+    std::ostream& stream(std::ostream&) const override;
+
+private:
+    const Type* infer(InferSema&) const override;
+    void check(TypeSema&) const override;
+
+    std::unique_ptr<const Expr> cond_;
+};
+
 class FieldExpr : public Expr {
 public:
     FieldExpr(Location location, const Expr* lhs, const Identifier* id)

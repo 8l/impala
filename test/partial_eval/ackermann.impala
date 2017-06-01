@@ -9,5 +9,6 @@ fn a(m: int, n: int) -> int {
 }
 
 fn main(i: int) -> int {
-    @a(3, 3)
+    let state = ?@;
+    @(!state)a(3, 3)
 }

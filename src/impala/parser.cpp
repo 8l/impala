@@ -239,6 +239,7 @@ public:
     const LiteralExpr*      parse_literal_expr();
     const CharExpr*         parse_char_expr();
     const StrExpr*          parse_str_expr();
+    const EvalExpr*         parse_eval_expr();
     const FnExpr*           parse_fn_expr();
     const IfExpr*           parse_if_expr();
     const MatchExpr*        parse_match_expr();
@@ -860,8 +861,13 @@ const Expr* Parser::parse_expr(Prec prec) {
 }
 
 const Expr* Parser::parse_prefix_expr() {
-    if (lookahead() == Token::OR || lookahead() == Token::OROR)
-        return parse_fn_expr();
+    switch (lookahead()) {
+        case Token::RUN:
+        case Token::HLT:  return parse_eval_expr();
+        case Token::OR:
+        case Token::OROR: return parse_fn_expr();
+        default:; // FALLTHROUGH
+    };
 
     auto tracker = track();
     auto tag = lex().tag();
@@ -1085,6 +1091,19 @@ const StrExpr* Parser::parse_str_expr() {
     values.emplace_back('\0');
 
     return new StrExpr(tracker, std::move(symbols), std::move(values));
+}
+
+const EvalExpr* Parser::parse_eval_expr() {
+    auto tracker = track();
+    auto tag = lex().tag();
+    const Expr* cond = nullptr;
+    if (accept(Token::L_PAREN)) {
+        cond = parse_expr();
+        expect(Token::R_PAREN, "condition of partial evaluation expression");
+    }
+    auto rhs = parse_expr(Prec::Unary);
+
+    return new EvalExpr(tracker, (EvalExpr::Tag) tag, cond, rhs);
 }
 
 const FnExpr* Parser::parse_fn_expr() {

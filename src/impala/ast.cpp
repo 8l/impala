@@ -85,7 +85,7 @@ void CastExpr::write() const { src()->write(); }
  */
 
 bool PrefixExpr::has_side_effect() const {
-    return tag() == INC || tag() == DEC || tag() == TILDE || tag() == RUN || tag() == HLT;
+    return tag() == INC || tag() == DEC || tag() == TILDE;
 }
 
 bool InfixExpr::has_side_effect() const {
@@ -106,6 +106,7 @@ bool MatchExpr::has_side_effect() const {
             [] (const std::unique_ptr<const Arm>& arm) { return arm->expr()->has_side_effect(); });
 }
 
+bool EvalExpr::has_side_effect() const { return true; }
 bool WhileExpr::has_side_effect() const { return true; }
 bool ForExpr::has_side_effect() const { return true; }
 

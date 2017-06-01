@@ -1374,11 +1374,18 @@ public:
         HLT = Token::HLT,
     };
 
-    EvalExpr(Location location, const Expr* cond)
+    EvalExpr(Location location, Tag tag, const Expr* cond, const Expr* rhs)
         : Expr(location)
+        , tag_(tag)
         , cond_(dock(cond_, cond))
+        , rhs_(dock(rhs_, rhs))
     {}
 
+    Tag tag() const { return tag_; }
+    const Expr* cond() const { return cond_.get(); }
+    const Expr* rhs() const { return rhs_.get(); }
+
+    bool has_side_effect() const override;
     void bind(NameSema&) const override;
     const thorin::Def* remit(CodeGen&) const override;
     std::ostream& stream(std::ostream&) const override;
@@ -1387,7 +1394,9 @@ private:
     const Type* infer(InferSema&) const override;
     void check(TypeSema&) const override;
 
+    Tag tag_;
     std::unique_ptr<const Expr> cond_;
+    std::unique_ptr<const Expr> rhs_;
 };
 
 class FieldExpr : public Expr {
@@ -1703,7 +1712,7 @@ private:
     void check(TypeSema&) const override;
     thorin::Value lemit(CodeGen&) const override;
     const thorin::Def* remit(CodeGen&) const override;
-    const thorin::Def* remit(CodeGen&, State, Location) const;
+    const thorin::Def* remit(CodeGen&, const Expr*, State, Location) const;
 
     std::unique_ptr<const Expr> lhs_;
 

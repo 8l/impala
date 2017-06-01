@@ -354,6 +354,16 @@ std::ostream& PEStateExpr::stream(std::ostream& os) const {
     return os << "@?";
 }
 
+std::ostream& EvalExpr::stream(std::ostream& os) const {
+    os << (tag() == RUN ? '@' : '$');
+    if (cond())
+        streamf(os, "({})", cond());
+
+    auto open_state = open(os, Prec::Unary);
+    os << rhs();
+    return close(os, open_state);
+}
+
 std::ostream& FieldExpr::stream(std::ostream& os) const {
     auto open_state = open(os, Prec::Unary);
     os << lhs() << '.' << symbol();

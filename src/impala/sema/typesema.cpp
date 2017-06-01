@@ -342,15 +342,12 @@ void PrefixExpr::check(TypeSema& sema) const {
         case NOT:
             sema.expect_int_or_bool(rhs(), "unary '!'");
             return;
-        case HLT: case RUN:
-            if (!rhs()->isa<MapExpr>())
-                error(this, "function call expected after partial evaluator command {}", (TokenTag)tag());
-            return;
-        case OR: case OROR:
-            THORIN_UNREACHABLE;
         case CHECK:
             sema.expect_bool(rhs(), "right-hand side of partial evaluation check");
             return;
+        case OR: case OROR:
+        case HLT: case RUN:
+            THORIN_UNREACHABLE;
     }
 
     THORIN_UNREACHABLE;
@@ -446,6 +443,13 @@ void PostfixExpr::check(TypeSema& sema) const {
 }
 
 void PEStateExpr::check(TypeSema&) const {}
+
+void EvalExpr::check(TypeSema& sema) const {
+    if (cond())
+        sema.expect_bool(cond(), "condition of partial evaluation expression");
+    if (!rhs()->isa<MapExpr>())
+        error(this, "function call expected after partial evaluator command {}", (TokenTag)tag());
+}
 
 template <typename F, typename T>
 bool symmetric(F f, T a, T b) { return f(a, b) || f(b, a); }
@@ -673,9 +677,13 @@ void WhileExpr::check(TypeSema& sema) const {
 
 void ForExpr::check(TypeSema& sema) const {
     auto forexpr = expr();
-    if (auto prefix = forexpr->isa<PrefixExpr>())
-        if (prefix->tag() == PrefixExpr::RUN || prefix->tag() == PrefixExpr::HLT)
-            forexpr = prefix->rhs();
+
+    if (auto eval_expr = forexpr->isa<EvalExpr>()) {
+        if (eval_expr->cond())
+            sema.expect_bool(eval_expr->cond(), "condition of partial evaluation expression");
+
+        forexpr = eval_expr->rhs();
+    }
 
     if (auto map = forexpr->isa<MapExpr>()) {
         auto ltype = sema.check(map->lhs());

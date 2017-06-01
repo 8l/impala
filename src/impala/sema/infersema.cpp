@@ -647,14 +647,14 @@ const Type* PrefixExpr::infer(InferSema& sema) const {
             return unpack_ref_type(sema.infer(rhs()));
         case ADD: case SUB:
         case NOT:
-        case RUN: case HLT:
             return sema.rvalue(rhs());
-        case OR:  case OROR: // Lambda
-            THORIN_UNREACHABLE;
         case CHECK:
             sema.rvalue(rhs());
             sema.constrain(rhs(), sema.type_bool());
             return sema.type_bool();
+        case OR:  case OROR: // Lambda
+        case RUN: case HLT:  // handled by EvalExpr
+            THORIN_UNREACHABLE;
     }
     THORIN_UNREACHABLE;
 }
@@ -712,6 +712,14 @@ const Type* PostfixExpr::infer(InferSema& sema) const {
 
 const Type* PEStateExpr::infer(InferSema& sema) const {
     return sema.type_bool();
+}
+
+const Type* EvalExpr::infer(InferSema& sema) const {
+    if (cond()) {
+        sema.rvalue(cond());
+        sema.constrain(cond(), sema.type_bool());
+    }
+    return sema.rvalue(rhs());
 }
 
 const Type* ExplicitCastExpr::infer(InferSema& sema) const {
@@ -957,9 +965,15 @@ const Type* WhileExpr::infer(InferSema& sema) const {
 const Type* ForExpr::infer(InferSema& sema) const {
     sema.rvalue(fn_expr());
     auto forexpr = expr();
-    if (auto prefix = forexpr->isa<PrefixExpr>())
-        if (prefix->tag() == PrefixExpr::RUN || prefix->tag() == PrefixExpr::HLT)
-            forexpr = prefix->rhs();
+
+    if (auto eval_expr = forexpr->isa<EvalExpr>()) {
+        if (eval_expr->cond()) {
+            sema.rvalue(eval_expr->cond());
+            sema.constrain(eval_expr->cond(), sema.type_bool());
+        }
+
+        forexpr = eval_expr->rhs();
+    }
 
     if (auto map = forexpr->isa<MapExpr>()) {
         auto ltype = sema.rvalue(map->lhs());

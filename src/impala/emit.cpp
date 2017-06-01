@@ -53,8 +53,8 @@ public:
 
     Value lemit(const Expr* expr) { return expr->lemit(*this); }
     const Def* remit(const Expr* expr) { return expr->remit(*this); }
-    const Def* remit(const Expr* expr, MapExpr::State state, Location eval_loc) {
-        return expr->as<MapExpr>()->remit(*this, state, eval_loc);
+    const Def* remit(const Expr* cond, const Expr* rhs, MapExpr::State state, Location eval_loc) {
+        return rhs->as<MapExpr>()->remit(*this, cond, state, eval_loc);
     }
     void emit_jump(const Expr* expr, JumpTarget& x) { if (is_reachable()) expr->emit_jump(*this, x); }
     void emit_branch(const Expr* expr, JumpTarget& t, JumpTarget& f) { expr->emit_branch(*this, t, f); }
@@ -402,10 +402,11 @@ const Def* PrefixExpr::remit(CodeGen& cg) const {
             return var.def();
         }
 
-        case RUN: return cg.remit(rhs(), MapExpr::Run, location());
-        case HLT: return cg.remit(rhs(), MapExpr::Hlt, location());
-        case OR: case OROR: THORIN_UNREACHABLE;
-        default:  return cg.lemit(this).load(location());
+        case RUN: case HLT:
+        case OR:  case OROR:
+            THORIN_UNREACHABLE;
+        default:
+            return cg.lemit(this).load(location());
     }
 }
 
@@ -499,11 +500,18 @@ const Def* PEStateExpr::remit(CodeGen& cg) const {
     auto f = cg.world().fn_type({m, cg.world().fn_type({m, cg.world().type_bool()})});
     auto cont = cg.world().continuation(f, {location(), "pe_state"});
     cont->set_intrinsic();
-    auto ret_type = cg.world().type_bool();
     auto mem = cg.get_mem(); // now get the current memory monad
-    auto ret = cg.call(cont, {mem}, ret_type, thorin::Debug(location(), cont->name()) + "_cont");
+    auto ret = cg.call(cont, {mem}, cg.world().type_bool(), thorin::Debug(location(), cont->name()) + "_cont");
     cg.set_mem(cg.cur_bb->param(0));
     return ret;
+}
+
+const Def* EvalExpr::remit(CodeGen& cg) const {
+    switch (tag()) {
+        case RUN: return cg.remit(cond(), rhs(), MapExpr::Run, location());
+        case HLT: return cg.remit(cond(), rhs(), MapExpr::Hlt, location());
+    }
+    THORIN_UNREACHABLE;
 }
 
 const Def* DefiniteArrayExpr::remit(CodeGen& cg) const {
@@ -557,9 +565,9 @@ Value MapExpr::lemit(CodeGen& cg) const {
     return Value::create_agg(agg, cg.remit(arg(0)));
 }
 
-const Def* MapExpr::remit(CodeGen& cg) const { return remit(cg, None, Location()); }
+const Def* MapExpr::remit(CodeGen& cg) const { return remit(cg, nullptr, None, Location()); }
 
-const Def* MapExpr::remit(CodeGen& cg, State state, Location eval_loc) const {
+const Def* MapExpr::remit(CodeGen& cg, const Expr* cond, State state, Location eval_loc) const {
     auto ltype = unpack_ref_type(lhs()->type());
 
     if (auto fn_type = ltype->isa<FnType>()) {
@@ -642,9 +650,10 @@ const Def* MapExpr::remit(CodeGen& cg, State state, Location eval_loc) const {
         if (ret_type)
             cg.set_mem(cg.cur_bb->param(0));
 
+        auto cond_def = cond ? cg.remit(cond) : cg.world().literal_bool(true, eval_loc);
         switch (state) {
-            case Run: old_bb->update_callee(cg.world().run(old_bb->callee(), old_bb->args().back(), eval_loc)); break;
-            case Hlt: old_bb->update_callee(cg.world().hlt(old_bb->callee(), old_bb->args().back(), eval_loc)); break;
+            case Run: old_bb->update_callee(cg.world().run(cond_def, old_bb->callee(), old_bb->args().back(), eval_loc)); break;
+            case Hlt: old_bb->update_callee(cg.world().hlt(cond_def, old_bb->callee(), old_bb->args().back(), eval_loc)); break;
             default:; // FALLTHROUGH
         }
 
@@ -799,9 +808,9 @@ const Def* ForExpr::remit(CodeGen& cg) const {
 
     // peel off run and halt
     auto forexpr = expr();
-    auto prefix = forexpr->isa<PrefixExpr>();
-    if (prefix && (prefix->tag() == PrefixExpr::RUN || prefix->tag() == PrefixExpr::HLT))
-        forexpr = prefix->rhs();
+    auto eval_expr = forexpr->isa<EvalExpr>();
+    if (eval_expr)
+        forexpr = eval_expr->rhs();
 
     // emit call
     auto map_expr = forexpr->as<MapExpr>();
@@ -810,8 +819,14 @@ const Def* ForExpr::remit(CodeGen& cg) const {
     defs.push_back(cg.remit(fn_expr()));
     defs.push_back(break_continuation);
     auto fun = cg.remit(map_expr->lhs());
-    if (prefix && prefix->tag() == PrefixExpr::RUN) fun = cg.world().run(fun, break_continuation, location());
-    if (prefix && prefix->tag() == PrefixExpr::HLT) fun = cg.world().hlt(fun, break_continuation, location());
+
+    if (eval_expr) {
+        auto cond_def = eval_expr->cond() ? cg.remit(eval_expr->cond()) : cg.world().literal_bool(true, eval_expr->location());
+        switch (eval_expr->tag()) {
+            case EvalExpr::RUN: fun = cg.world().run(cond_def, fun, break_continuation, location()); break;
+            case EvalExpr::HLT: fun = cg.world().hlt(cond_def, fun, break_continuation, location()); break;
+        }
+    }
 
     defs.front() = cg.get_mem(); // now get the current memory monad
     cg.call(fun, defs, nullptr, map_expr->location());

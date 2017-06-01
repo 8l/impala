@@ -315,10 +315,16 @@ void PathExpr::bind(NameSema& sema) const {
     }
 }
 
-void PrefixExpr ::bind(NameSema& sema) const {                     rhs()->bind(sema); }
+void PrefixExpr ::bind(NameSema& sema) const {                    rhs()->bind(sema); }
 void InfixExpr  ::bind(NameSema& sema) const { lhs()->bind(sema); rhs()->bind(sema); }
 void PostfixExpr::bind(NameSema& sema) const { lhs()->bind(sema); }
 void PEStateExpr::bind(NameSema&) const {}
+
+void EvalExpr::bind(NameSema& sema) const {
+    if (cond())
+        cond()->bind(sema);
+    rhs()->bind(sema);
+}
 
 void FieldExpr::bind(NameSema& sema) const {
     lhs()->bind(sema);

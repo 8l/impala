@@ -964,19 +964,12 @@ const Expr* Parser::parse_primary_expr() {
         case Token::ID:  {
             auto path = parse_path();
             ASTTypes ast_type_args;
-            if (accept(Token::L_BRACKET)) {     // struct or map expression
+
+            if (accept(Token::L_BRACKET))       // struct or type-app expression
                 parse_comma_list("type arguments", Token::R_BRACKET, [&] { ast_type_args.emplace_back(parse_type()); });
 
-                if (accept(Token::L_PAREN)) {   // type app expression + map expression
-                    auto type_app_expr = new TypeAppExpr(tracker, new PathExpr(path), std::move(ast_type_args));
-                    Exprs args;
-                    parse_comma_list("arguments of a map expression", Token::R_PAREN, [&] { args.emplace_back(parse_expr()); });
-                    return new MapExpr(tracker, type_app_expr, std::move(args));
-                }
-            }
             // lookahead required because of if cond { expr }
-            if (lookahead(0) == Token::L_BRACE &&
-                ((lookahead(1) == Token::ID && lookahead(2) == Token::COLON) ||
+            if (lookahead(0) == Token::L_BRACE && ((lookahead(1) == Token::ID && lookahead(2) == Token::COLON) ||
                   lookahead(1) == Token::R_BRACE)) {
                 eat(Token::L_BRACE);
 
@@ -992,7 +985,11 @@ const Expr* Parser::parse_primary_expr() {
 
                 return new StructExpr(tracker, ast_type_app, std::move(elems));
             }
-            return new PathExpr(path);
+
+            auto path_expr = new PathExpr(path);
+            if (ast_type_args.empty())
+                return path_expr;
+            return new TypeAppExpr(tracker, path_expr, std::move(ast_type_args));
         }
         case Token::IF:         return parse_if_expr();
         case Token::MATCH:      return parse_match_expr();

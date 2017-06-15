@@ -968,9 +968,9 @@ const Expr* Parser::parse_primary_expr() {
             if (accept(Token::L_BRACKET))       // struct or type-app expression
                 parse_comma_list("type arguments", Token::R_BRACKET, [&] { ast_type_args.emplace_back(parse_type()); });
 
-            // lookahead required because of if cond { expr }
-            if (lookahead(0) == Token::L_BRACE && ((lookahead(1) == Token::ID && lookahead(2) == Token::COLON) ||
-                  lookahead(1) == Token::R_BRACE)) {
+            // lookahead required because of 'if cond { expr }'
+            if (lookahead(0) == Token::L_BRACE && ((lookahead(1) == Token::ID && lookahead(2) == Token::COLON)
+                        || lookahead(1) == Token::R_BRACE)) {
                 eat(Token::L_BRACE);
 
                 auto ast_type_app = new ASTTypeApp(tracker, path, std::move(ast_type_args));
